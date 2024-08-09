@@ -55,17 +55,45 @@ func NewClient(name string, psw string) (Client, error) {
 	opt := "inline"
 	prefix := fmt.Sprintf("EASYRSA_PASSOUT=pass:%s ", psw)
 	if len(psw) <= 0 {
-		opt = " nopass"
+		opt = "nopass"
 		prefix = ""
 	}
 
-	changeDir := fmt.Sprintf("sudo cd %s", easy_rsa_path)
+	changeDir := fmt.Sprintf("cd %s", easy_rsa_path)
 	buildClient := fmt.Sprintf("sudo %s./easyrsa --batch build-client-full %s %s", prefix, name, opt)
+	fmt.Println(fmt.Sprintf("%s && %s", changeDir, buildClient))
 	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("%s && %s", changeDir, buildClient))
 	cmd.Start()
 
 	os.WriteFile(name+".ovpn", []byte(cli.Config()), 666)
 	return cli, nil
+}
+
+func RevokeClient(cli Client) error {
+	var newIndex []string
+
+	content, err := readFile(index_path)
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(content, "\n")
+
+	for _, l := range lines {
+		sep := strings.Split(l, "/CN=")
+		if len(sep) < 2 || strings.EqualFold(sep[1], cli.username) {
+			continue
+		}
+		newIndex = append(newIndex, l)
+	}
+	os.WriteFile(index_path, []byte(strings.Join(newIndex, "\n")), 666)
+
+	changeDir := fmt.Sprintf("sudo cd %s", easy_rsa_path)
+	revokeClient := fmt.Sprintf("sudo ./easyrsa --batch revoke %s", cli.username)
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("%s && %s", changeDir, revokeClient))
+	cmd.Start()
+
+	return nil
 }
 
 func (c Client) Config() string {
