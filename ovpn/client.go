@@ -15,23 +15,40 @@ var (
 	nameRegex, _ = regexp.Compile("^[a-zA-Z0-9_-]+$")
 )
 
+func Clients() ([]Client, error) {
+	content, err := readFile(index_path)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(content, "\n")
+	var clients []Client
+
+	for _, l := range lines {
+		sep := strings.Split(l, "/CN=")
+		if len(sep) < 2 {
+			continue
+		}
+		clients = append(clients, Client{username: sep[1]})
+	}
+	return clients, nil
+}
+
 type Client struct {
 	username string
 }
 
 func NewClient(name string, psw string) (Client, error) {
-	cli := Client{
-		username: name,
-	}
+	cli := Client{username: name}
 	if !nameRegex.MatchString(name) {
 		return cli, errors.New("invalid client name")
 	}
 
-	clients, err := allClientNames()
+	clients, err := Clients()
 	if err != nil {
 		return cli, err
 	}
-	if slices.Contains(clients, name) {
+	if slices.ContainsFunc(clients, func(c Client) bool { return strings.EqualFold(c.username, name) }) {
 		return cli, errors.New("user already exists")
 	}
 
@@ -47,41 +64,20 @@ func NewClient(name string, psw string) (Client, error) {
 	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("%s && %s", changeDir, buildClient))
 	cmd.Start()
 
-	generateClientFile(name)
+	os.WriteFile(name+".ovpn", []byte(cli.Config()), 666)
 	return cli, nil
 }
 
-func allClientNames() ([]string, error) {
-	path := "/etc/openvpn/easy-rsa/pki/index.txt"
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return []string{}, err
-	}
-
-	lines := strings.Split(string(content), "\n")
-	var names []string
-
-	for _, l := range lines {
-		sep := strings.Split(l, "/CN=")
-		if len(sep) < 2 {
-			continue
-		}
-		names = append(names, sep[1])
-	}
-
-	return names, nil
-}
-
-func generateClientFile(name string) {
+func (c Client) Config() string {
 	s := &strings.Builder{}
 
 	writeTemplate(s)
 	writeCA(s)
-	writeCert(s, name)
-	writeKey(s, name)
+	writeCert(s, c.username)
+	writeKey(s, c.username)
 	writeTLSSig(s)
 
-	os.WriteFile(name+".ovpn", []byte(s.String()), 666)
+	return s.String()
 }
 
 func writeTemplate(s *strings.Builder) error {

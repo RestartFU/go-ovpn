@@ -8,6 +8,7 @@ var (
 	tls_crypt_path       = open_vpn_path + "tls-crypt.key"
 	tls_auth_path        = open_vpn_path + "tls-auth.key"
 	client_template_path = open_vpn_path + "client-template.txt"
+	index_path           = easy_rsa_path + "pki/index.txt"
 	ca_path              = easy_rsa_path + "pki/ca.crt"
 	cert_path            = easy_rsa_path + "pki/issued/"
 	key_path             = easy_rsa_path + "pki/key/"
