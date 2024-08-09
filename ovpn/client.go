@@ -76,7 +76,6 @@ func RevokeClient(cli Client) error {
 	if err != nil {
 		return err
 	}
-
 	lines := strings.Split(content, "\n")
 
 	for _, l := range lines {
@@ -88,7 +87,7 @@ func RevokeClient(cli Client) error {
 	}
 	os.WriteFile(index_path, []byte(strings.Join(newIndex, "\n")), 666)
 
-	changeDir := fmt.Sprintf("sudo cd %s", easy_rsa_path)
+	changeDir := fmt.Sprintf("cd %s", easy_rsa_path)
 	revokeClient := fmt.Sprintf("sudo ./easyrsa --batch revoke %s", cli.username)
 	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("%s && %s", changeDir, revokeClient))
 	cmd.Start()

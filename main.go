@@ -8,11 +8,11 @@ import (
 )
 
 func main() {
-	_, err := ovpn.NewClient("client"+strconv.Itoa(int(rand.Uint32())), "")
+	cli, err := ovpn.NewClient("client"+strconv.Itoa(int(rand.Uint32())), "")
 	if err != nil {
 		panic(err)
 	}
 
 	//fmt.Println(cli.Config())
-	//ovpn.RevokeClient(cli)
+	ovpn.RevokeClient(cli)
 }
