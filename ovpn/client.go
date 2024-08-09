@@ -15,6 +15,19 @@ var (
 	nameRegex, _ = regexp.Compile("^[a-zA-Z0-9_-]+$")
 )
 
+func ClientByName(name string) (Client, bool) {
+	clients, err := Clients()
+	if err != nil {
+		return Client{}, false
+	}
+	for _, c := range clients {
+		if strings.EqualFold(c.username, name) {
+			return c, true
+		}
+	}
+	return Client{}, false
+}
+
 func Clients() ([]Client, error) {
 	content, err := readFile(index_path)
 	if err != nil {
@@ -26,7 +39,7 @@ func Clients() ([]Client, error) {
 
 	for _, l := range lines {
 		sep := strings.Split(l, "/CN=")
-		if len(sep) < 2 {
+		if len(sep) < 2 || l[0] == 'R' {
 			continue
 		}
 		clients = append(clients, Client{username: sep[1]})
