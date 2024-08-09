@@ -15,29 +15,40 @@ var (
 	nameRegex, _ = regexp.Compile("^[a-zA-Z0-9_-]+$")
 )
 
-func NewClient(name string, psw string) error {
-	if !nameRegex.MatchString(name) {
-		return errors.New("invalid client name")
+type Client struct {
+	username string
+}
+
+func NewClient(name string, psw string) (Client, error) {
+	cli := Client{
+		username: name,
 	}
+	if !nameRegex.MatchString(name) {
+		return cli, errors.New("invalid client name")
+	}
+
 	clients, err := allClientNames()
 	if err != nil {
-		return err
+		return cli, err
 	}
 	if slices.Contains(clients, name) {
-		return errors.New("user already exists")
+		return cli, errors.New("user already exists")
 	}
-	opt := ""
+
+	opt := "inline"
 	prefix := fmt.Sprintf("EASYRSA_PASSOUT=pass:%s ", psw)
 	if len(psw) <= 0 {
 		opt = " nopass"
 		prefix = ""
 	}
 
-	cmd := exec.Command("/bin/bash", "-c", "sudo cd /etc/openvpn/easy-rsa && sudo "+prefix+"./easyrsa --batch build-client-full "+name+opt)
+	changeDir := fmt.Sprintf("sudo cd %s", easy_rsa_path)
+	buildClient := fmt.Sprintf("sudo %s./easyrsa --batch build-client-full %s %s", prefix, name, opt)
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("%s && %s", changeDir, buildClient))
 	cmd.Start()
 
 	generateClientFile(name)
-	return nil
+	return cli, nil
 }
 
 func allClientNames() ([]string, error) {
@@ -73,26 +84,27 @@ func generateClientFile(name string) {
 	os.WriteFile(name+".ovpn", []byte(s.String()), 666)
 }
 
-func writeTemplate(s *strings.Builder) {
-	templ, err := os.ReadFile("/etc/openvpn/client-template.txt")
-	if err != nil {
-		panic(err)
-	}
-	s.Write(templ)
-	s.WriteRune('\n')
-}
-
-func writeCA(s *strings.Builder) error {
-	content, err := os.ReadFile("/etc/openvpn/easy-rsa/pki/ca.crt")
+func writeTemplate(s *strings.Builder) error {
+	templ, err := readFile(client_template_path)
 	if err != nil {
 		return err
 	}
-	writeStringWithTag(s, "ca", string(content))
+	s.WriteString(templ)
+	s.WriteRune('\n')
+	return nil
+}
+
+func writeCA(s *strings.Builder) error {
+	content, err := readFile(ca_path)
+	if err != nil {
+		return err
+	}
+	writeStringWithTag(s, "ca", content)
 	return nil
 }
 
 func writeCert(s *strings.Builder, name string) error {
-	content, err := os.ReadFile("/etc/openvpn/easy-rsa/pki/issued/" + name + ".crt")
+	content, err := readFile(cert_path + name + ".crt")
 	if err != nil {
 		return err
 	}
@@ -102,34 +114,35 @@ func writeCert(s *strings.Builder, name string) error {
 }
 
 func writeKey(s *strings.Builder, name string) error {
-	content, err := os.ReadFile("/etc/openvpn/easy-rsa/pki/private/" + name + ".key")
+	content, err := readFile(key_path + name + ".key")
 	if err != nil {
 		return err
 	}
-	writeStringWithTag(s, "key", string(content))
+	writeStringWithTag(s, "key", content)
 	return nil
 }
 
-func writeTLSSig(s *strings.Builder) {
-	content, err := os.ReadFile("/etc/openvpn/server.conf")
+func writeTLSSig(s *strings.Builder) error {
+	content, err := readFile(server_conf_path)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	str := string(content)
 	if strings.Contains(str, "tls-crypt") {
-		crypt, err := os.ReadFile("/etc/openvpn/tls-crypt.key")
+		crypt, err := readFile(tls_crypt_path)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		writeStringWithTag(s, "tls-crypt", string(crypt))
+		writeStringWithTag(s, "tls-crypt", crypt)
 	}
 	if strings.Contains(str, "tls-auth") {
-		auth, err := os.ReadFile("/etc/openvpn/tls-crypt.key")
+		auth, err := readFile(tls_auth_path)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		writeStringWithTag(s, "tls-auth", string(auth))
+		writeStringWithTag(s, "tls-auth", auth)
 	}
+	return nil
 }
 
 func pullString(s, start, end string) string {
@@ -140,4 +153,9 @@ func writeStringWithTag(w io.StringWriter, tag string, str string) {
 	w.WriteString(fmt.Sprintf("<%s>\n", tag))
 	w.WriteString(str)
 	w.WriteString(fmt.Sprintf("</%s>\n", tag))
+}
+
+func readFile(path string) (string, error) {
+	buf, err := os.ReadFile(path)
+	return string(buf), err
 }
