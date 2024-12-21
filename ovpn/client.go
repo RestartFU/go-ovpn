@@ -120,6 +120,10 @@ func (c Client) Config() string {
 	return s.String()
 }
 
+func (c Client) Username() string {
+	return c.username
+}
+
 func writeTemplate(s *strings.Builder) error {
 	templ, err := readFile(clientTemplatePath)
 	if err != nil {
