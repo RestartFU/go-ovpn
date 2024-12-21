@@ -29,7 +29,7 @@ func ClientByName(name string) (Client, bool) {
 }
 
 func Clients() ([]Client, error) {
-	content, err := readFile(index_path)
+	content, err := readFile(indexPath)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func NewClient(name string, psw string) (Client, error) {
 		prefix = ""
 	}
 
-	changeDir := fmt.Sprintf("cd %s", easy_rsa_path)
+	changeDir := fmt.Sprintf("cd %s", easyRsaPath)
 	buildClient := fmt.Sprintf("sudo %s./easyrsa --batch build-client-full %s %s", prefix, name, opt)
 	fmt.Println(fmt.Sprintf("%s && %s", changeDir, buildClient))
 	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("%s && %s", changeDir, buildClient))
@@ -85,7 +85,7 @@ func NewClient(name string, psw string) (Client, error) {
 func RevokeClient(cli Client) error {
 	var newIndex []string
 
-	content, err := readFile(index_path)
+	content, err := readFile(indexPath)
 	if err != nil {
 		return err
 	}
@@ -98,9 +98,9 @@ func RevokeClient(cli Client) error {
 		}
 		newIndex = append(newIndex, l)
 	}
-	os.WriteFile(index_path, []byte(strings.Join(newIndex, "\n")), 666)
+	os.WriteFile(indexPath, []byte(strings.Join(newIndex, "\n")), 666)
 
-	changeDir := fmt.Sprintf("cd %s", easy_rsa_path)
+	changeDir := fmt.Sprintf("cd %s", easyRsaPath)
 	revokeClient := fmt.Sprintf("sudo ./easyrsa --batch revoke %s", cli.username)
 	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("%s && %s", changeDir, revokeClient))
 	cmd.Start()
@@ -121,7 +121,7 @@ func (c Client) Config() string {
 }
 
 func writeTemplate(s *strings.Builder) error {
-	templ, err := readFile(client_template_path)
+	templ, err := readFile(clientTemplatePath)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func writeTemplate(s *strings.Builder) error {
 }
 
 func writeCA(s *strings.Builder) error {
-	content, err := readFile(ca_path)
+	content, err := readFile(caPath)
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func writeCA(s *strings.Builder) error {
 }
 
 func writeCert(s *strings.Builder, name string) error {
-	content, err := readFile(cert_path + name + ".crt")
+	content, err := readFile(certPath + name + ".crt")
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func writeCert(s *strings.Builder, name string) error {
 }
 
 func writeKey(s *strings.Builder, name string) error {
-	content, err := readFile(key_path + name + ".key")
+	content, err := readFile(keyPath + name + ".key")
 	if err != nil {
 		return err
 	}
@@ -159,20 +159,20 @@ func writeKey(s *strings.Builder, name string) error {
 }
 
 func writeTLSSig(s *strings.Builder) error {
-	content, err := readFile(server_conf_path)
+	content, err := readFile(serverConfPath)
 	if err != nil {
 		return err
 	}
 	str := string(content)
 	if strings.Contains(str, "tls-crypt") {
-		crypt, err := readFile(tls_crypt_path)
+		crypt, err := readFile(tlsCryptPath)
 		if err != nil {
 			return err
 		}
 		writeStringWithTag(s, "tls-crypt", crypt)
 	}
 	if strings.Contains(str, "tls-auth") {
-		auth, err := readFile(tls_auth_path)
+		auth, err := readFile(tlsAuthPath)
 		if err != nil {
 			return err
 		}

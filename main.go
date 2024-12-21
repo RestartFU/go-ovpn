@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"strconv"
 
-	"github.com/cadre-vpn/go-ovpn/ovpn"
+	"github.com/restartfu/go-ovpn/ovpn"
 )
 
 func main() {
