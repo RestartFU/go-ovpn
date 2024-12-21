@@ -93,7 +93,7 @@ func RevokeClient(cli Client) error {
 
 	for _, l := range lines {
 		sep := strings.Split(l, "/CN=")
-		if len(sep) < 2 || strings.EqualFold(sep[1], cli.username) {
+		if strings.EqualFold(sep[1], cli.username) {
 			continue
 		}
 		newIndex = append(newIndex, l)
